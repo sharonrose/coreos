@@ -65,15 +65,9 @@
             "metadata": {
                 "description": "Tag Values"
             }
-        },
-        "nodeCount": {
-            "type": "int"
         }
     },
-    "variables": {
-        "lbIpConfigId": "[concat(resourceId('Microsoft.Network/loadBalancers', parameters('loadBalancerName')),'/frontendIPConfigurations/LBFE')]",
-        "loadBalancerbId": "[resourceId('Microsoft.Network/loadBalancers',parameters('loadBalancerName'))]"
-    },
+    "variables": {},
     "resources": [
         {
             "apiVersion": "[parameters('loadBalancersApiVersion')]",
