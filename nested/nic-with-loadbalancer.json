@@ -67,12 +67,6 @@
                 "description": "Load Balancer Backendpool ID"
             }
         },
-        "loadBalancerInboundNatRef": {
-            "type": "string",
-            "metadata": {
-                "description": "Load Balancer Inbound Nat ID"
-            }
-        },
         "subnetRef": {
             "type": "string",
             "metadata": {
