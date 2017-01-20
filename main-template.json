@@ -10,6 +10,10 @@
             "type": "securestring",
             "defaultValue": "TestDriveUser123"
         },
+        "discoveryUrl":{
+            "type":"string",
+            "defaultvalue":""
+        },
         "location": {
             "type": "string",
             "defaultValue": "westus",
@@ -53,14 +57,14 @@
     "variables": {
         "suffix": "[substring(uniqueString(resourceGroup().id), 0, 5)]",
         "clusterPrefix": "coreos",
-
         "computeApiVersion": "2016-03-30",
         "networkApiVersion": "2016-06-01",
         "StorageApiVersion": "2015-06-15",
-
         "publicIPdnsPrefix": "[concat(variables('clusterPrefix'),'dns',variables('suffix'))]",
+        "lbpublicIPdnsPrefix": "[concat(variables('clusterPrefix'),'lbdns',variables('suffix'))]",
         "avsetName": "[concat(variables('clusterPrefix'),'-avset')]",
         "pipName": "[concat(variables('clusterPrefix'),'-pip')]",
+        "lbpipName": "[concat(variables('clusterPrefix'),'-lbpip')]",
         "nicName": "[concat(variables('clusterPrefix'),'-nic')]",
         "lbName": "[concat(variables('clusterPrefix'),'-lb')]",
         "storageAccName": "[concat(variables('clusterPrefix'),'sa',variables('suffix'))]",
@@ -68,21 +72,17 @@
         "vmStorageAccountContainerName": "[concat(variables('clusterPrefix'),'cont',variables('suffix'))]",
         "storageAccountType": "Standard_LRS",
         "vnetName": "[concat(variables('clusterPrefix'),'-vnet')]",
-        "networkSecurityGroupName":"[concat(variables('clusterPrefix'),'-nsg')]",
-        "loadBalancerInboundNatRef": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('lbName')),'/inboundNatRules/RDP-VM')]",
+        "networkSecurityGroupName": "[concat(variables('clusterPrefix'),'-nsg')]",
         "subnetRef": "[concat(resourceId('Microsoft.Network/virtualNetworks', variables('vnetName')),'/subnets/',variables('subnet1Name'))]",
         "loadBalancerBkpoolRef": "[concat(resourceId('Microsoft.Network/loadBalancers', variables('lbName')),'/backendAddressPools/LBBAP')]",
-
         "vnetAddressPrefix": "10.7.0.0/16",
         "subnet1Name": "subnet1",
         "subnet1Prefix": "10.7.0.0/24",
-
         "vmSize": "Standard_D1_v2",
         "imagePublisher": "CoreOS",
         "imageOffer": "CoreOS",
         "imageSKU": "Stable",
         "imageVersion": "latest",
-
         "baseUrl": "https://raw.githubusercontent.com/sharonrose/coreos/master",
         "avsetDeployUrl": "[concat(variables('baseUrl'),'/nested/availability-set.json')]",
         "publicipDeployUrl": "[concat(variables('baseUrl'),'/nested/public-ip.json')]",
@@ -91,7 +91,8 @@
         "vnetsubnetDeployUrl": "[concat(variables('baseUrl'),'/nested/vnet-subnet.json')]",
         "vmDeployUrl": "[concat(variables('baseUrl'),'/nested/vm-withavset.json')]",
         "lbDeployUrl": "[concat(variables('baseUrl'),'/nested/loadbalancer.json')]",
-        "networkSecurityGroupUrl":"[concat(variables('baseUrl'),'/nested/nsg.json')]"
+        "networkSecurityGroupUrl": "[concat(variables('baseUrl'),'/nested/nsg.json')]",
+            "unitFile": "[concat('#cloud-config\n\ncoreos:\n  etcd2:\n    discovery: ', parameters('discoveryUrl'),'\n    advertise-client-urls: http://$private_ipv4:2379,http://$private_ipv4:4001\n    initial-advertise-peer-urls: http://$private_ipv4:2380\n    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001\n    listen-peer-urls: http://$private_ipv4:2380\n  units:\n    - name: etcd2.service\n      command: start\n    - name: fleet.service\n      command: start')]"
     },
     "resources": [
         {
@@ -118,7 +119,34 @@
             }
         },
         {
-            "name": "publicipDeploy",
+            "name": "[concat('publicipDeploy',copyIndex())]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2016-02-01",
+            "copy": {
+                "name": "piploop",
+                "count": "[parameters('nodeCount')]"
+            },
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[variables('publicipDeployUrl')]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "networkApiVersion": {
+                        "value": "[variables('networkApiVersion')]"
+                    },
+                    "publicIPAddressName": {
+                        "value": "[concat(variables('pipName'),copyIndex())]"
+                    },
+                    "publicIPdnsPrefix": {
+                        "value": "[concat(variables('publicIPdnsPrefix'),copyIndex())]"
+                    }
+                }
+            }
+        },
+        {
+            "name": "lbpublcip",
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "2016-02-01",
             "properties": {
@@ -132,10 +160,10 @@
                         "value": "[variables('networkApiVersion')]"
                     },
                     "publicIPAddressName": {
-                        "value": "[variables('pipName')]"
+                        "value": "[variables('lbpipName')]"
                     },
                     "publicIPdnsPrefix": {
-                        "value": "[variables('publicIPdnsPrefix')]"
+                        "value": "[variables('lbpublicIPdnsPrefix')]"
                     }
                 }
             }
@@ -198,7 +226,7 @@
                 }
             }
         },
-             {
+        {
             "apiVersion": "2016-02-01",
             "name": "networkSecurityGroupDeploy",
             "type": "Microsoft.Resources/deployments",
@@ -220,13 +248,13 @@
                     }
                 }
             }
-},
+        },
         {
             "name": "lbDeploy",
             "type": "Microsoft.Resources/deployments",
             "apiVersion": "2016-02-01",
             "dependsOn": [
-                "publicipDeploy"
+                "lbpublcip"
             ],
             "properties": {
                 "mode": "Incremental",
@@ -245,10 +273,7 @@
                         "value": "[parameters('location')]"
                     },
                     "publicIPAddressName": {
-                        "value": "[variables('pipName')]"
-                    },
-                    "nodeCount": {
-                        "value": "[parameters('nodeCount')]"
+                        "value": "[variables('lbpipName')]"
                     }
                 }
             }
@@ -261,9 +286,9 @@
                 "vnetsubnetDeploy",
                 "lbDeploy"
             ],
-            "copy":{
-                "name":"nicloop",
-                "count":"[parameters('nodeCount')]"
+            "copy": {
+                "name": "nicloop",
+                "count": "[parameters('nodeCount')]"
             },
             "properties": {
                 "mode": "Incremental",
@@ -284,11 +309,11 @@
                     "loadBalancerBkpoolRef": {
                         "value": "[variables('loadBalancerBkpoolRef')]"
                     },
-                    "loadBalancerInboundNatRef": {
-                        "value": "[concat(variables('loadBalancerInboundNatRef'),copyIndex())]"
-                    },
                     "subnetRef": {
                         "value": "[variables('subnetRef')]"
+                    },
+                    "publicIPAddressName": {
+                        "value": "[concat(variables('pipName'),copyIndex())]"
                     }
                 }
             }
@@ -301,9 +326,9 @@
                 "storageDeploy",
                 "[concat('nicwithloadbalncerDeploy',copyIndex())]"
             ],
-            "copy":{
-                "name":"vmloop",
-                "count":"[parameters('nodeCount')]"
+            "copy": {
+                "name": "vmloop",
+                "count": "[parameters('nodeCount')]"
             },
             "properties": {
                 "mode": "Incremental",
@@ -329,6 +354,9 @@
                     },
                     "adminPassword": {
                         "value": "[parameters('adminPassword')]"
+                    },
+                    "unitFile":{
+                        "value":"[variables('unitFile')]"
                     },
                     "imagePublisher": {
                         "value": "[variables('imagePublisher')]"
