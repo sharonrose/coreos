@@ -131,6 +131,13 @@
                 "description": "Network Interface Name"
             }
         },
+        "unitFile":{
+        "type":"string",
+            "defaultvalue":"",
+            "metadata":{
+            "description":"unifile which configures the config file"
+            }
+        }
         "availabilitySetName": {
             "type": "string",
             "defaultValue": "avset",
