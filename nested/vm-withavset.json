@@ -168,6 +168,7 @@
                 "osProfile": {
                     "computerName": "[parameters('vmName')]",
                     "adminUsername": "[parameters('adminUsername')]",
+                    "customData": "[base64(parameters('unitFile'))]",
                     "adminPassword": "[parameters('adminPassword')]"
                 },
                 "storageProfile": {
