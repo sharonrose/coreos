@@ -78,6 +78,9 @@
             "metadata": {
                 "description": "Subnet id "
             }
+        },
+        "publicIPAddressName": {
+            "type": "string"
         }
     },
     "variables": {},
@@ -96,17 +99,15 @@
                         "name": "ipconfig",
                         "properties": {
                             "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses',parameters('publicIPAddressName'))]"
+                            },
                             "subnet": {
                                 "id": "[parameters('subnetRef')]"
                             },
                             "loadBalancerBackendAddressPools": [
                                 {
                                     "id": "[parameters('loadBalancerBkpoolRef')]"
-                                }
-                            ],
-                            "loadBalancerInboundNatRules": [
-                                {
-                                    "id": "[parameters('loadBalancerInboundNatRef')]"
                                 }
                             ]
                         }
