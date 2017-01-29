@@ -131,13 +131,6 @@
                 "description": "Network Interface Name"
             }
         },
-        "unitFile":{
-        "type":"string",
-            "defaultvalue":"",
-            "metadata":{
-            "description":"unifile which configures the config file"
-            }
-        },
         "availabilitySetName": {
             "type": "string",
             "defaultValue": "avset",
@@ -168,7 +161,6 @@
                 "osProfile": {
                     "computerName": "[parameters('vmName')]",
                     "adminUsername": "[parameters('adminUsername')]",
-                    "customData": "[base64(parameters('unitFile'))]",
                     "adminPassword": "[parameters('adminPassword')]"
                 },
                 "storageProfile": {
